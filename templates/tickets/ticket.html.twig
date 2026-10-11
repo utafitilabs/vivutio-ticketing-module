@@ -81,8 +81,8 @@
             <form method="post" action="{{ path('ticketing_ticket_refund', {uuid: ticket.uuid}) }}" novalidate>
                 <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_step') }}">
                 <div class="grid-2">
-                    <div class="field{{ wrong.returned is defined ? ' wrong' }}"><label for="refund-returned">The carrier returns</label><input class="input" id="refund-returned" name="returned" inputmode="decimal" value="0.00">{{ ticketing_.hint('returned', wrong, null) }}</div>
-                    <div class="field{{ wrong.kept is defined ? ' wrong' }}"><label for="refund-kept">We keep</label><input class="input" id="refund-kept" name="kept" inputmode="decimal" value="{{ (ticket.fee * ticket.travellers|length)|number_format(2, ".", "") }}">{{ ticketing_.hint('kept', wrong, null) }}</div>
+                    <div class="field{{ wrong.returned is defined ? ' wrong' }}"><label for="refund-returned">The carrier returns</label><input class="input" id="refund-returned" name="returned" inputmode="decimal" value="0.00">{{ ticketing_.hint('returned', wrong, ticket.currency) }}</div>
+                    <div class="field{{ wrong.kept is defined ? ' wrong' }}"><label for="refund-kept">We keep</label><input class="input" id="refund-kept" name="kept" inputmode="decimal" value="{{ (ticket.fee * ticket.travellers|length)|number_format(2, ".", "") }}">{{ ticketing_.hint('kept', wrong, ticket.currency) }}</div>
                 </div>
                 <button type="submit" class="button outline">Record a refund</button>
             </form>

@@ -21,6 +21,7 @@ use Vivutio\Contracts\Partner\PartnerInterface;
 use Vivutio\Contracts\Settings\OrganizationIdentitySourceInterface;
 use Vivutio\Ticketing\Entity\Carrier;
 use Vivutio\Ticketing\Entity\Ticket;
+use Vivutio\Ticketing\Enum\CarrierKindEnum;
 use Vivutio\Ticketing\Enum\FareKindEnum;
 use Vivutio\Ticketing\Enum\TicketStatusEnum;
 use Vivutio\Ticketing\Exception\InvalidTicketException;
@@ -90,7 +91,7 @@ final readonly class TicketService
             throw new InvalidTicketException('status', 'A new ticket is held or issued.');
         }
         $legs = self::legs($sent['legs'] ?? null);
-        $travellers = self::travellers($sent['travellers'] ?? null, $carrier, TicketStatusEnum::Issued === $status);
+        $travellers = self::travellers($sent['travellers'] ?? null, $carrier, TicketStatusEnum::Issued === $status && CarrierKindEnum::Air === $carrier->getKind());
         $currency = strtoupper($text('currency'));
         if (1 !== preg_match('{^[A-Z]{3}$}D', $currency)) {
             throw new InvalidTicketException('currency', 'A currency is its three-letter code: USD, TZS, EUR.');
@@ -158,7 +159,7 @@ final readonly class TicketService
         $travellers = $ticket->getTravellers();
         foreach ($travellers as $i => $traveller) {
             $typed = \is_string($numbers[$i] ?? null) ? trim($numbers[$i]) : '';
-            $travellers[$i]['number'] = self::number($typed, \sprintf('numbers[%d]', $i), $ticket->getCarrier(), true);
+            $travellers[$i]['number'] = self::number($typed, \sprintf('numbers[%d]', $i), $ticket->getCarrier(), CarrierKindEnum::Air === $ticket->getCarrier()->getKind());
         }
         $ticket->setTravellers($travellers);
         $this->issued($ticket, $this->clock->now(), $by);
@@ -193,7 +194,7 @@ final readonly class TicketService
         }
         $text = self::texts($sent);
         $legs = self::legs($sent['legs'] ?? null);
-        $typed = self::travellers($sent['travellers'] ?? null, $ticket->getCarrier(), true);
+        $typed = self::travellers($sent['travellers'] ?? null, $ticket->getCarrier(), CarrierKindEnum::Air === $ticket->getCarrier()->getKind());
         $before = $ticket->getTravellers();
         if (\count($typed) !== \count($before)) {
             throw new InvalidTicketException('travellers', 'A change keeps its travellers; another traveller is a new ticket.');
@@ -286,7 +287,7 @@ final readonly class TicketService
 
             return [implode(' · ', $about), trim($leg['from'].' '.$leg['leaves'].' → '.$leg['to'].' '.$leg['arrives'])];
         }, $ticket->getLegs());
-        $people = array_map(static fn (array $traveller): array => [$traveller['name'].' · '.(FareKindEnum::tryFrom($traveller['fare_kind'])?->label() ?? ''), '' === $traveller['number'] ? 'Not issued yet' : $traveller['number']], $travellers);
+        $people = array_map(static fn (array $traveller): array => [$traveller['name'].' · '.(FareKindEnum::tryFrom($traveller['fare_kind'])?->label() ?? ''), '' !== $traveller['number'] ? $traveller['number'] : ($held ? 'Not issued yet' : 'No number')], $travellers);
 
         $first = $ticket->getLegs()[0];
         $until = $ticket->getHeldUntil()?->setTimezone($this->zone());
@@ -457,8 +458,8 @@ final readonly class TicketService
                     throw new InvalidTicketException($field($key), 'A time as 07:30.');
                 }
             }
-            if (mb_strlen($leg['number']) > 12) {
-                throw new InvalidTicketException($field('number'), 'At most 12 characters: KL 112.');
+            if (mb_strlen($leg['number']) > 20) {
+                throw new InvalidTicketException($field('number'), 'At most 20 characters: KL 112.');
             }
             $legs[] = $leg;
         }
@@ -514,7 +515,9 @@ final readonly class TicketService
 
     /**
      * A ticket number as the carrier printed it: digits in groups; one an
-     * airline issues starts with its prefix.
+     * airline issues starts with its prefix. An airline's ticket is its
+     * number, so it is needed once issued; a ferry's or a coach's may be a
+     * receipt with none.
      *
      * @throws InvalidTicketException
      */

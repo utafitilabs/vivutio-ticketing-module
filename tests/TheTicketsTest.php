@@ -159,6 +159,22 @@ final class TheTicketsTest extends WebTestCase
         self::assertCount(0, $page->selectButton('Record a refund'));
     }
 
+    /** An airline's ticket is its number; a ferry's or a coach's may be a receipt with none. */
+    public function testOnlyAnAirlinesTicketNeedsItsNumber(): void
+    {
+        $this->signedInAs($this->person('Rehema', TierEnum::Admin));
+        $this->record([
+            'carrier' => (string) $this->ferry->getUuid(),
+            'their_reference' => '',
+            'legs' => [['number' => 'Kilimanjaro VI', 'from' => 'Dar es Salaam', 'to' => 'Zanzibar', 'day' => '2026-11-15', 'leaves' => '09:30', 'arrives' => '11:30']],
+            'travellers' => [['name' => 'Maria Lopes', 'fare_kind' => 'adult', 'fare' => '35.00', 'number' => '', 'seat' => '']],
+        ]);
+        $page = $this->browser->followRedirect();
+        self::assertSame('Issued', trim($page->filter('.title .chip')->text()));
+        self::assertSame(['Sun 15 Nov 2026 · Kilimanjaro VI · Economy, 20 kg | Dar es Salaam 09:30 → Zanzibar 11:30'], $this->facts($page, 'The legs'));
+        self::assertSame(['Maria Lopes · Adult | No number'], $this->facts($page, 'Travellers'));
+    }
+
     public function testATicketIsBilledToTheTravellerOrAClient(): void
     {
         $this->signedInAs($this->person('Rehema', TierEnum::Admin));
