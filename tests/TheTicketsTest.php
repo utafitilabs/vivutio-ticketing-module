@@ -28,6 +28,8 @@ use Vivutio\Bundle\IdentityBundle\Entity\User;
 use Vivutio\Bundle\IdentityBundle\Enum\TierEnum;
 use Vivutio\Bundle\PartnerBundle\Entity\Partner;
 use Vivutio\Bundle\PartnerBundle\Enum\PartnerKindEnum;
+use Vivutio\Contracts\Partner\Charge;
+use Vivutio\Contracts\Partner\ChargesInterface;
 use Vivutio\Ticketing\Entity\Carrier;
 use Vivutio\Ticketing\Entity\Ticket;
 use Vivutio\Ticketing\Enum\CarrierKindEnum;
@@ -173,6 +175,29 @@ final class TheTicketsTest extends WebTestCase
         self::assertSame('Issued', trim($page->filter('.title .chip')->text()));
         self::assertSame(['Sun 15 Nov 2026 · Kilimanjaro VI · Economy, 20 kg | Dar es Salaam 09:30 → Zanzibar 11:30'], $this->facts($page, 'The legs'));
         self::assertSame(['Maria Lopes · Adult | No number'], $this->facts($page, 'Travellers'));
+    }
+
+    /** What a ticket is owed, through the core, the soonest due first: an issued one what it charged, a refunded one what was kept, a voided one nothing. */
+    public function testATicketSaysWhatItIsOwedThroughTheCore(): void
+    {
+        $this->signedInAs($this->person('Rehema', TierEnum::Admin));
+        $this->record();
+        $this->record(['status' => 'held', 'held_until' => '2026-11-11T17:00', 'travellers' => [['name' => 'Lukas Weber', 'fare_kind' => 'adult', 'fare' => '194.00', 'number' => '', 'seat' => '']]]);
+        $this->record(['billed_to' => '']);
+        [$issued, , $voided] = $this->em()->getRepository(Ticket::class)->findBy([], ['reference' => 'ASC']);
+        $page = $this->browser->request('GET', '/tickets/'.$voided->getUuid());
+        $this->browser->submit($page->selectButton('Void it')->form());
+
+        $charges = static::getContainer()->get(ChargesInterface::class);
+        self::assertInstanceOf(ChargesInterface::class, $charges);
+        self::assertSame([
+            ['ticket:'.$voided->getUuid(), 'TK-0003', 'Ticket', 'Kilima Air, DAR → ZNZ → DAR, 14 – 16 Nov 2026, voided', null, 'Amina Said', 'USD', 0, '2026-11-10', '2026-11-10', 'ticketing_ticket'],
+            ['ticket:'.$issued->getUuid(), 'TK-0001', 'Ticket', 'Kilima Air, DAR → ZNZ → DAR, 14 – 16 Nov 2026', $this->company->getPartnerId(), 'Mtandao Logistics', 'USD', 35600, '2026-11-10', '2026-12-10', 'ticketing_ticket'],
+        ], array_map(static fn (Charge $charge): array => [$charge->key, $charge->reference, $charge->kind, $charge->about, $charge->partnerId, $charge->party, $charge->currency, $charge->amount, $charge->raisedOn->format('Y-m-d'), $charge->dueOn->format('Y-m-d'), $charge->route], array_values(array_filter($charges->all(), static fn (Charge $charge): bool => str_starts_with($charge->key, 'ticket:')))));
+
+        $page = $this->browser->request('GET', '/tickets/'.$issued->getUuid());
+        $this->browser->submit($page->selectButton('Record a refund')->form(['returned' => '316.00', 'kept' => '40.00']));
+        self::assertSame(['Kilima Air, DAR → ZNZ → DAR, 14 – 16 Nov 2026, refunded', 4000], [$charges->find('ticket:'.$issued->getUuid())?->about, $charges->find('ticket:'.$issued->getUuid())?->amount]);
     }
 
     public function testATicketIsBilledToTheTravellerOrAClient(): void

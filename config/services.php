@@ -14,12 +14,14 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 use Vivutio\Contracts\Access\ConcernSourceInterface;
+use Vivutio\Contracts\Partner\ChargeSourceInterface;
 use Vivutio\Contracts\Partner\PartnerDirectoryInterface;
 use Vivutio\Contracts\Settings\OrganizationIdentitySourceInterface;
 use Vivutio\Contracts\Shell\MenuSourceInterface;
 use Vivutio\Ticketing\Access\TicketingConcerns;
 use Vivutio\Ticketing\Controller\CarrierController;
 use Vivutio\Ticketing\Controller\TicketController;
+use Vivutio\Ticketing\Partner\TicketCharges;
 use Vivutio\Ticketing\Repository\CarrierRepository;
 use Vivutio\Ticketing\Repository\TicketRepository;
 use Vivutio\Ticketing\Service\CarrierService;
@@ -58,6 +60,10 @@ return static function (ContainerConfigurator $container): void {
             service(PartnerDirectoryInterface::class),
             service(OrganizationIdentitySourceInterface::SERVICE),
         ]);
+
+    $services->set('ticketing.charges', TicketCharges::class)
+        ->args([service(TicketRepository::class), service(PartnerDirectoryInterface::class)])
+        ->tag(ChargeSourceInterface::TAG);
 
     $services->set('ticketing.controller.tickets', TicketController::class)
         ->args([
