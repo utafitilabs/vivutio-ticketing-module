@@ -1,0 +1,100 @@
+{# A ticket: the carrier, the legs, the travellers and their numbers, who it is
+   billed to, the money, each step taken, and what may be done to it next. #}
+{% extends '@Shell/page.html.twig' %}
+{% import '@Shell/_icons.html.twig' as icons %}
+{% import '@VivutioTicketing/tickets/_macros.html.twig' as ticketing_ %}
+
+{% block title %}{{ ticket.reference }}{% endblock %}
+{% block here %}tickets{% endblock %}
+
+{% block page %}
+{%- set may = door('tickets.manage') -%}
+{%- set status = ticket.status.value -%}
+<header class="page-head">
+    <div><nav class="trail" aria-label="Where you are"><a href="{{ path('ticketing_tickets') }}">Tickets</a> / {{ ticket.reference }}</nav><div class="title"><h1>{{ ticket.reference }}</h1><span class="about">{{ ticketing_.chip(view) }}</span></div></div>
+    <div class="actions"><a class="button outline" href="{{ path('ticketing_tickets') }}">Back to the tickets</a></div>
+</header>
+
+{% if expired %}<div class="notice danger" role="alert">{{ icons.icon('alert') }}<span>The form had expired, so nothing was recorded. Try again.</span></div>{% endif %}
+{% for field in ['void', 'release'] %}{% if wrong[field] is defined %}<div class="notice danger" role="alert">{{ icons.icon('alert') }}<span>{{ wrong[field] }}</span></div>{% endif %}{% endfor %}
+
+<div class="band">
+    <span class="f"><span class="k">Carrier</span><span class="v">{{ ticket.carrier.name }}<em>{{ ticket.carrier.kind.label|lower }}{% if ticket.carrierReference %} · reference {{ ticket.carrierReference }}{% endif %}</em></span></span>
+    <span class="f"><span class="k">Trip</span><span class="v">{{ view.trip }}<em>{{ view.dates }}</em></span></span>
+    <span class="f"><span class="k">Travellers</span><span class="v">{{ ticket.travellers|length }}<em>{{ view.party }}</em></span></span>
+    <span class="f"><span class="k">{{ view.total_label }}</span><span class="v">{{ view.total }}</span></span>
+</div>
+
+<div class="columns">
+    <div class="stack">
+        <section class="panel">
+            <header class="panel-head"><h2>The legs</h2><p>{{ view.held ? 'As the carrier holds them' : 'As the carrier confirmed them' }}</p></header>
+            {% for leg in view.legs %}<div class="fact"><span>{{ leg[0] }}</span><b>{{ leg[1] }}</b></div>{% endfor %}
+        </section>
+        <section class="panel">
+            <header class="panel-head"><h2>Travellers</h2><p>{{ view.held ? 'Numbered when it is issued' : 'A ticket number each' }}</p></header>
+            {% for traveller in view.travellers %}<div class="fact"><span>{{ traveller[0] }}</span><b style="white-space:nowrap">{{ traveller[1] }}</b></div>{% endfor %}
+        </section>
+    </div>
+    <aside class="aside stack">
+        <section class="panel small">
+            <header class="panel-head"><h2>Billed to</h2></header>
+            {% if ticket.billedTo is null %}
+                <div class="fact"><span>Paid by</span><b>{{ ticket.travellers[0].name }}, the traveller</b></div>
+            {% else %}
+                <div class="fact"><span>Client</span><b>{% if client and door('partners.read') %}<a href="{{ path('partner_partner', {uuid: client.partnerId}) }}">{{ client.name }}</a>{% elseif client %}{{ client.name }}{% else %}A partner no longer kept{% endif %}</b></div>
+                {% if client %}<div class="fact"><span>Pays</span><b>{{ client.creditDays > 0 ? 'in ' ~ client.creditDays ~ ' days' : 'at once' }}, a {{ client.partnerKind == 'company' ? 'company' : 'tour operator' }}</b></div>{% endif %}
+            {% endif %}
+            {% if ticket.askedFor %}<div class="fact"><span>Asked for by</span><b>{{ ticket.askedFor }}</b></div>{% endif %}
+            {% if ticket.issuedBy %}<div class="fact"><span>Issued by</span><b>{{ ticket.issuedBy }}</b></div>{% else %}<div class="fact"><span>Recorded by</span><b>{{ ticket.recordedBy }}</b></div>{% endif %}
+            {% if ticket.notes %}<p class="hint">{{ ticket.notes|nl2br }}</p>{% endif %}
+        </section>
+        <section class="panel small">
+            <header class="panel-head"><h2>The money</h2><p>{{ view.held ? 'To be charged when it is issued' : 'As kept when it was issued' }}</p></header>
+            {% for line in view.fares %}<div class="fact"><span>{{ line[0] }}</span><b>{{ line[1] }}</b></div>{% endfor %}
+        </section>
+        <section class="panel small">
+            <header class="panel-head"><h2>History</h2></header>
+            <ol class="timeline">{% for step in ticket.history|reverse %}<li><span data-said>{{ step.said }}</span><small>{{ step.at|date('j M Y, H:i') }} · {{ step.by }}</small></li>{% endfor %}</ol>
+        </section>
+        {% if may and status == 'held' %}
+        <form class="panel small" method="post" action="{{ path('ticketing_ticket_issue', {uuid: ticket.uuid}) }}" novalidate>
+            <header class="panel-head"><h2>Issue it</h2><p>Once the carrier has issued it</p></header>
+            <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_step') }}">
+            {% for i, traveller in ticket.travellers %}
+                {%- set name = 'numbers[' ~ i ~ ']' -%}
+                <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="issue-{{ i }}">{{ traveller.name }}’s ticket number</label><input class="input" id="issue-{{ i }}" name="{{ name }}" maxlength="24">{{ ticketing_.hint(name, wrong, ticket.carrier.prefix ? ticket.carrier.name ~ '’s numbers start ' ~ ticket.carrier.prefix : null) }}</div>
+            {% endfor %}
+            <button type="submit" class="button main">Record it issued</button>
+        </form>
+        <form class="panel small" method="post" action="{{ path('ticketing_ticket_release', {uuid: ticket.uuid}) }}" novalidate>
+            <header class="panel-head"><h2>Let it go</h2></header>
+            <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_step') }}">
+            <p class="hint">The carrier releases the seats after the time limit; nothing is charged.</p>
+            <button type="submit" class="button danger">Let it go</button>
+        </form>
+        {% endif %}
+        {% if may and status == 'issued' %}
+        <section class="panel small">
+            <header class="panel-head"><h2>Change it</h2></header>
+            <a class="button outline" href="{{ path('ticketing_ticket_change', {uuid: ticket.uuid}) }}">Change a leg or a traveller</a>
+            <form method="post" action="{{ path('ticketing_ticket_refund', {uuid: ticket.uuid}) }}" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_step') }}">
+                <div class="grid-2">
+                    <div class="field{{ wrong.returned is defined ? ' wrong' }}"><label for="refund-returned">The carrier returns</label><input class="input" id="refund-returned" name="returned" inputmode="decimal" value="0.00">{{ ticketing_.hint('returned', wrong, null) }}</div>
+                    <div class="field{{ wrong.kept is defined ? ' wrong' }}"><label for="refund-kept">We keep</label><input class="input" id="refund-kept" name="kept" inputmode="decimal" value="{{ (ticket.fee * ticket.travellers|length)|number_format(2, ".", "") }}">{{ ticketing_.hint('kept', wrong, null) }}</div>
+                </div>
+                <button type="submit" class="button outline">Record a refund</button>
+            </form>
+            {% if voidable %}
+            <form method="post" action="{{ path('ticketing_ticket_void', {uuid: ticket.uuid}) }}" novalidate>
+                <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_step') }}">
+                <p class="hint">Voiding is the carrier’s same-day cancel: nothing is charged.</p>
+                <button type="submit" class="button danger">Void it</button>
+            </form>
+            {% endif %}
+        </section>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

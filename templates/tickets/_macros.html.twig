@@ -1,0 +1,46 @@
+{# A field's refusal, said beside it, or its hint. #}
+{% macro hint(field, wrong, hint) %}{% if wrong[field] is defined %}<div class="hint"><span>{{ wrong[field] }}</span></div>{% elseif hint %}<div class="hint"><span>{{ hint }}</span></div>{% endif %}{% endmacro %}
+
+{# A refusal that belongs to no one field: the legs, the travellers. #}
+{% macro group(field, wrong) %}{% if wrong[field] is defined %}<div class="field wrong" data-field="{{ field }}"><div class="hint"><span>{{ wrong[field] }}</span></div></div>{% endif %}{% endmacro %}
+
+{# A ticket's status as a chip, the held one with the carrier's time limit. #}
+{% macro chip(view) -%}
+<span class="chip{{ view.ok ? ' ok' }}">{{ view.chip }}</span>
+{%- endmacro %}
+
+{# The legs as typed: two rows a leg, the second leg's labels as the first's. #}
+{% macro legs(legs, wrong, word) %}
+{% import _self as ticketing_ %}
+{% for i, leg in legs %}
+<div class="grid-3">
+    {% for key, label in {number: 'Leg ' ~ (i + 1) ~ ', ' ~ word|lower, from: 'From', to: 'To', day: 'Day', leaves: 'Leaves', arrives: 'Arrives'} %}
+    {%- set name = 'legs[' ~ i ~ '][' ~ key ~ ']' -%}
+    <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="leg-{{ i }}-{{ key }}">{{ label }}</label><input class="input" id="leg-{{ i }}-{{ key }}" name="{{ name }}" value="{{ leg[key] }}"{% if key == 'day' %} type="date"{% elseif key in ['leaves', 'arrives'] %} type="time"{% else %} maxlength="{{ key == 'number' ? 12 : 40 }}"{% endif %}>{{ ticketing_.hint(name, wrong, null) }}</div>
+    {% endfor %}
+</div>
+{% endfor %}
+{% endmacro %}
+
+{# The travellers as typed. #}
+{% macro travellers(travellers, wrong, fare_kinds, fares_kept) %}
+{% import _self as ticketing_ %}
+{% for i, traveller in travellers %}
+<div class="grid-3">
+    {%- set name = 'travellers[' ~ i ~ '][name]' -%}
+    <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="traveller-{{ i }}-name">Traveller {{ i + 1 }}, name as on the ID</label><input class="input" id="traveller-{{ i }}-name" name="{{ name }}" value="{{ traveller.name }}" maxlength="120">{{ ticketing_.hint(name, wrong, null) }}</div>
+    {% if fares_kept %}
+    <input type="hidden" name="travellers[{{ i }}][fare_kind]" value="{{ traveller.fare_kind }}"><input type="hidden" name="travellers[{{ i }}][fare]" value="{{ traveller.fare }}">
+    {% else %}
+    {%- set name = 'travellers[' ~ i ~ '][fare_kind]' -%}
+    <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="traveller-{{ i }}-kind">Fare</label><select class="select" id="traveller-{{ i }}-kind" name="{{ name }}">{% for kind in fare_kinds %}<option value="{{ kind.value }}"{{ kind.value == traveller.fare_kind ? ' selected' }}>{{ kind.label }}</option>{% endfor %}</select>{{ ticketing_.hint(name, wrong, null) }}</div>
+    {%- set name = 'travellers[' ~ i ~ '][fare]' -%}
+    <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="traveller-{{ i }}-fare">Fare, taxes in</label><input class="input" id="traveller-{{ i }}-fare" name="{{ name }}" value="{{ traveller.fare }}" inputmode="decimal">{{ ticketing_.hint(name, wrong, null) }}</div>
+    {% endif %}
+    {%- set name = 'travellers[' ~ i ~ '][number]' -%}
+    <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="traveller-{{ i }}-number">Ticket number</label><input class="input" id="traveller-{{ i }}-number" name="{{ name }}" value="{{ traveller.number }}" maxlength="24">{{ ticketing_.hint(name, wrong, 'Once issued') }}</div>
+    {%- set name = 'travellers[' ~ i ~ '][seat]' -%}
+    <div class="field{{ wrong[name] is defined ? ' wrong' }}"><label for="traveller-{{ i }}-seat">Seat</label><input class="input" id="traveller-{{ i }}-seat" name="{{ name }}" value="{{ traveller.seat }}" maxlength="8">{{ ticketing_.hint(name, wrong, null) }}</div>
+</div>
+{% endfor %}
+{% endmacro %}

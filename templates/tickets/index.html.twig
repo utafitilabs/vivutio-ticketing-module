@@ -1,0 +1,53 @@
+{# Tickets bought from carriers for travellers, by status and kind, the soonest first. #}
+{% extends '@Shell/page.html.twig' %}
+{% import '@VivutioTicketing/tickets/_macros.html.twig' as ticketing_ %}
+
+{% block title %}Tickets{% endblock %}
+{% block here %}tickets{% endblock %}
+
+{% block page %}
+<header class="page-head">
+    <div><nav class="trail" aria-label="Where you are">Tickets</nav><div class="title"><h1>Tickets</h1><span class="about">Bought from carriers for travellers, the soonest first</span></div></div>
+    <div class="actions"><a class="button outline" href="{{ path('ticketing_carriers') }}">Carriers</a>{% if door('tickets.record') %}<a class="button main" href="{{ path('ticketing_ticket_new') }}">New ticket</a>{% endif %}</div>
+</header>
+
+<div class="stack">
+    <form class="tools" method="get" action="{{ path('ticketing_tickets') }}" data-tools>
+        <span data-facet="status">
+            <a class="chip" data-chip href="{{ path('ticketing_tickets', kind ? {kind: kind.value} : {}) }}"{{ status is null ? ' aria-current="true"' }}>All <em>{{ counts|reduce((sum, n) => sum + n, 0) }}</em></a>
+            {% for case in statuses %}
+                <a class="chip" data-chip href="{{ path('ticketing_tickets', {status: case.value}|merge(kind ? {kind: kind.value} : {})) }}"{{ case == status ? ' aria-current="true"' }}>{{ case.label }} <em>{{ counts[case.value] }}</em></a>
+            {% endfor %}
+        </span>
+        <span data-facet="kind">
+            <a class="chip" data-chip href="{{ path('ticketing_tickets', status ? {status: status.value} : {}) }}"{{ kind is null ? ' aria-current="true"' }}>Any kind <em>{{ kinds|reduce((sum, one) => sum + one.tickets, 0) }}</em></a>
+            {% for one in kinds %}
+                <a class="chip" data-chip href="{{ path('ticketing_tickets', {kind: one.kind.value}|merge(status ? {status: status.value} : {})) }}"{{ one.kind == kind ? ' aria-current="true"' }}>{{ one.kind.label }} <em>{{ one.tickets }}</em></a>
+            {% endfor %}
+        </span>
+        <span class="shown">showing <b>{{ tickets|length }}</b> of {{ views|length }}</span>
+    </form>
+
+    <section class="panel list">
+        <table class="table">
+            <thead><tr><th>Ticket</th><th>Trip</th><th>Leaves</th><th>Billed to</th><th style="width:150px">Status</th><th style="width:110px">Charged</th><th style="width:90px"></th></tr></thead>
+            <tbody>
+            {% for ticket in tickets %}
+                {%- set view = views[ticket.reference] -%}
+                <tr data-ticket="{{ ticket.reference }}">
+                    <td><div><b style="white-space:nowrap">{{ ticket.reference }}</b><small>{{ view.names }}</small></div></td>
+                    <td><div>{{ view.trip }}<small>{{ view.carrier }} · {{ ticket.carrier.kind.label|lower }}</small></div></td>
+                    <td>{{ view.leaves }}</td>
+                    <td>{{ billed[ticket.reference] }}</td>
+                    <td data-status>{{ ticketing_.chip(view) }}</td>
+                    <td>{{ view.total }}</td>
+                    <td><a class="button outline" href="{{ path('ticketing_ticket', {uuid: ticket.uuid}) }}">Open</a></td>
+                </tr>
+            {% else %}
+                <tr><td colspan="7"><div class="empty"><b>No tickets here</b><span>A ticket is recorded as the carrier made it: held to its time limit, or issued.</span></div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

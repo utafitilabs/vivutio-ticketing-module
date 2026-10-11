@@ -1,0 +1,37 @@
+{# An issued ticket changed as the carrier changed it, with what it charged. #}
+{% extends '@Shell/page.html.twig' %}
+{% import '@Shell/_icons.html.twig' as icons %}
+{% import '@VivutioTicketing/tickets/_macros.html.twig' as ticketing_ %}
+
+{% block title %}Change {{ ticket.reference }}{% endblock %}
+{% block here %}tickets{% endblock %}
+
+{% block page %}
+<header class="page-head">
+    <div><nav class="trail" aria-label="Where you are"><a href="{{ path('ticketing_tickets') }}">Tickets</a> / <a href="{{ path('ticketing_ticket', {uuid: ticket.uuid}) }}">{{ ticket.reference }}</a> / Change</nav><div class="title"><h1>Change {{ ticket.reference }}</h1></div></div>
+    <div class="actions"><a class="button outline" href="{{ path('ticketing_ticket', {uuid: ticket.uuid}) }}">Back to the ticket</a></div>
+</header>
+
+<form class="panel" method="post" action="{{ path('ticketing_ticket_change', {uuid: ticket.uuid}) }}" novalidate>
+    <header class="panel-head"><h2>The change</h2><p>As the carrier made it</p></header>
+    <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_change') }}">
+    {% if expired %}<div class="notice danger" role="alert">{{ icons.icon('alert') }}<span>The form had expired, so nothing was recorded. Try again.</span></div>{% endif %}
+
+    <span class="label">The legs</span>
+    {{ ticketing_.group('legs', wrong) }}
+    {{ ticketing_.legs(legs, wrong, ticket.carrier.kind.leg) }}
+    {% if legs|length < 6 %}<div><button type="submit" class="button outline" name="add" value="leg">Add a leg</button></div>{% endif %}
+
+    <span class="label">Travellers</span>
+    {{ ticketing_.group('travellers', wrong) }}
+    {{ ticketing_.travellers(travellers, wrong, [], true) }}
+
+    <span class="label">What the carrier charged</span>
+    <div class="grid-3">
+        <div class="field{{ wrong.change_fee is defined ? ' wrong' }}"><label for="change-fee">Change fee</label><input class="input" id="change-fee" name="change_fee" value="{{ typed.change_fee }}" inputmode="decimal">{{ ticketing_.hint('change_fee', wrong, ticket.currency) }}</div>
+        <div class="field{{ wrong.fare_difference is defined ? ' wrong' }}"><label for="change-difference">Fare difference</label><input class="input" id="change-difference" name="fare_difference" value="{{ typed.fare_difference }}" inputmode="decimal">{{ ticketing_.hint('fare_difference', wrong, ticket.currency) }}</div>
+    </div>
+
+    <footer class="panel-foot"><span class="state">Kept on the ticket, with who changed it</span><button type="submit" class="button main">Record the change</button></footer>
+</form>
+{% endblock %}

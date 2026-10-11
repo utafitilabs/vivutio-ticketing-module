@@ -1,0 +1,6 @@
+# The ticketing module's pages (vivutio/ticketing-module): tickets and the
+# carriers they are bought from, under /tickets. This file is what mounts
+# them, and it is yours: remove the import and the pages are gone.
+ticketing:
+    resource: '@VivutioTicketingBundle/src/Controller/'
+    type: attribute

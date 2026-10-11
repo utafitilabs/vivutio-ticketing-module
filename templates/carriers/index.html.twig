@@ -1,0 +1,49 @@
+{# The carriers the agency buys from, and adding one. #}
+{% extends '@Shell/page.html.twig' %}
+{% import '@Shell/_icons.html.twig' as icons %}
+{% import '@VivutioTicketing/tickets/_macros.html.twig' as ticketing_ %}
+
+{% block title %}Carriers{% endblock %}
+{% block here %}tickets{% endblock %}
+
+{% block page %}
+<header class="page-head">
+    <div><nav class="trail" aria-label="Where you are"><a href="{{ path('ticketing_tickets') }}">Tickets</a> / Carriers</nav><div class="title"><h1>Carriers</h1><span class="about">The airlines, ferries, coaches and railways we buy from</span></div></div>
+    <div class="actions"><a class="button outline" href="{{ path('ticketing_tickets') }}">Back to the tickets</a></div>
+</header>
+
+{% if expired %}<div class="notice danger" role="alert">{{ icons.icon('alert') }}<span>The form had expired, so nothing was added. Try again.</span></div>{% endif %}
+
+<div class="columns">
+    <div class="stack">
+        <section class="panel list">
+            <table class="table">
+                <thead><tr><th>Carrier</th><th>Kind</th><th>Code</th><th>Ticket prefix</th><th>How we buy</th><th style="width:90px">Tickets</th></tr></thead>
+                <tbody>
+                {% for one in carriers %}
+                    <tr data-carrier="{{ one.carrier.name }}"><td><b>{{ one.carrier.name }}</b></td><td>{{ one.carrier.kind.label }}</td><td>{{ one.carrier.code ?: '—' }}</td><td>{{ one.carrier.prefix ?: '—' }}</td><td>{{ one.carrier.howWeBuy }}</td><td>{{ one.tickets }}</td></tr>
+                {% else %}
+                    <tr><td colspan="6"><div class="empty"><b>No carriers yet</b><span>A carrier is kept here before its first ticket is recorded.</span></div></td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+    {% if door('tickets.manage') %}
+    <aside class="aside stack">
+        <form class="panel small" method="post" action="{{ path('ticketing_carrier_add') }}" novalidate>
+            <header class="panel-head"><h2>Add a carrier</h2></header>
+            <input type="hidden" name="_token" value="{{ csrf_token('ticketing_carrier_add') }}">
+            <div class="field{{ wrong.name is defined ? ' wrong' }}"><label for="carrier-name">Name</label><input class="input" id="carrier-name" name="name" value="{{ typed.name }}" maxlength="120">{{ ticketing_.hint('name', wrong, null) }}</div>
+            <div class="field{{ wrong.kind is defined ? ' wrong' }}"><label for="carrier-kind">Kind</label><select class="select" id="carrier-kind" name="kind">{% for kind in kinds %}<option value="{{ kind.value }}"{{ kind.value == typed.kind ? ' selected' }}>{{ kind.label }}</option>{% endfor %}</select>{{ ticketing_.hint('kind', wrong, null) }}</div>
+            <div class="grid-2">
+                <div class="field{{ wrong.code is defined ? ' wrong' }}"><label for="carrier-code">Code</label><input class="input" id="carrier-code" name="code" value="{{ typed.code }}" maxlength="3">{{ ticketing_.hint('code', wrong, 'An airline’s two letters') }}</div>
+                <div class="field{{ wrong.prefix is defined ? ' wrong' }}"><label for="carrier-prefix">Ticket prefix</label><input class="input" id="carrier-prefix" name="prefix" value="{{ typed.prefix }}" maxlength="3" inputmode="numeric">{{ ticketing_.hint('prefix', wrong, 'Its three digits') }}</div>
+            </div>
+            <div class="field{{ wrong.how is defined ? ' wrong' }}"><label for="carrier-how">How we buy</label><input class="input" id="carrier-how" name="how" value="{{ typed.how }}" maxlength="160">{{ ticketing_.hint('how', wrong, 'The account, portal or office') }}</div>
+            <footer class="panel-foot"><button type="submit" class="button main">Add the carrier</button></footer>
+        </form>
+    </aside>
+    {% endif %}
+</div>
+{% endblock %}

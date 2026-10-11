@@ -1,0 +1,60 @@
+{# A new ticket, recorded by hand as the carrier made it. #}
+{% extends '@Shell/page.html.twig' %}
+{% import '@Shell/_icons.html.twig' as icons %}
+{% import '@VivutioTicketing/tickets/_macros.html.twig' as ticketing_ %}
+
+{% block title %}New ticket{% endblock %}
+{% block here %}tickets{% endblock %}
+
+{% block page %}
+<header class="page-head">
+    <div><nav class="trail" aria-label="Where you are"><a href="{{ path('ticketing_tickets') }}">Tickets</a> / New ticket</nav><div class="title"><h1>New ticket</h1></div></div>
+    <div class="actions"><a class="button outline" href="{{ path('ticketing_tickets') }}">Back to the tickets</a></div>
+</header>
+
+<form class="panel" method="post" action="{{ path('ticketing_ticket_new') }}" novalidate>
+    <header class="panel-head"><h2>Ticket</h2><p>As the carrier made it, recorded by hand</p></header>
+    <input type="hidden" name="_token" value="{{ csrf_token('ticketing_ticket_new') }}">
+    {% if expired %}<div class="notice danger" role="alert">{{ icons.icon('alert') }}<span>The form had expired, so nothing was recorded. Record it again.</span></div>{% endif %}
+
+    <span class="label">The carrier</span>
+    <div class="grid-3">
+        <div class="field{{ wrong.carrier is defined ? ' wrong' }}"><label for="ticket-carrier">Carrier</label><select class="select" id="ticket-carrier" name="carrier">{% for kind, kept in carriers %}<optgroup label="{{ kind }}">{% for carrier in kept %}<option value="{{ carrier.uuid }}"{{ carrier.uuid == typed.carrier ? ' selected' }}>{{ carrier.name }}</option>{% endfor %}</optgroup>{% endfor %}</select>{{ ticketing_.hint('carrier', wrong, 'The carriers we keep, by kind; the ticket is of its carrier’s kind') }}</div>
+        <div class="field{{ wrong.their_reference is defined ? ' wrong' }}"><label for="ticket-reference">Their reference</label><input class="input" id="ticket-reference" name="their_reference" value="{{ typed.their_reference }}" maxlength="40">{{ ticketing_.hint('their_reference', wrong, 'The booking reference, PNR') }}</div>
+        <div class="field{{ wrong.class is defined ? ' wrong' }}"><label for="ticket-class">Class</label><input class="input" id="ticket-class" name="class" value="{{ typed.class }}" maxlength="40">{{ ticketing_.hint('class', wrong, null) }}</div>
+        <div class="field{{ wrong.baggage is defined ? ' wrong' }}"><label for="ticket-baggage">Baggage, a traveller</label><input class="input" id="ticket-baggage" name="baggage" value="{{ typed.baggage }}" maxlength="40">{{ ticketing_.hint('baggage', wrong, null) }}</div>
+    </div>
+
+    <span class="label">The legs</span>
+    {{ ticketing_.group('legs', wrong) }}
+    {{ ticketing_.legs(legs, wrong, 'Flight') }}
+    {% if legs|length < 6 %}<div><button type="submit" class="button outline" name="add" value="leg">Add a leg</button></div>{% endif %}
+
+    <span class="label">Travellers</span>
+    {{ ticketing_.group('travellers', wrong) }}
+    {{ ticketing_.travellers(travellers, wrong, fare_kinds, false) }}
+    {% if travellers|length < 9 %}<div><button type="submit" class="button outline" name="add" value="traveller">Add a traveller</button></div>{% endif %}
+
+    <span class="label">The money</span>
+    <div class="grid-3">
+        <div class="field{{ wrong.currency is defined ? ' wrong' }}"><label for="ticket-currency">Currency</label><input class="input" id="ticket-currency" name="currency" value="{{ typed.currency }}" maxlength="3">{{ ticketing_.hint('currency', wrong, null) }}</div>
+        <div class="field{{ wrong.fee is defined ? ' wrong' }}"><label for="ticket-fee">Our fee, a traveller</label><input class="input" id="ticket-fee" name="fee" value="{{ typed.fee }}" inputmode="decimal">{{ ticketing_.hint('fee', wrong, null) }}</div>
+        <div class="field{{ wrong.taxes is defined ? ' wrong' }}"><label for="ticket-taxes">Taxes in the fares</label><input class="input" id="ticket-taxes" name="taxes" value="{{ typed.taxes }}" inputmode="decimal">{{ ticketing_.hint('taxes', wrong, 'For the receipt; nothing is added') }}</div>
+    </div>
+
+    <span class="label">Who it is for</span>
+    <div class="grid-2">
+        <div class="field{{ wrong.billed_to is defined ? ' wrong' }}"><label for="ticket-billed">Billed to</label><select class="select" id="ticket-billed" name="billed_to"><option value="">The traveller who pays</option>{% for client in clients %}<option value="{{ client.partnerId }}"{{ client.partnerId == typed.billed_to ? ' selected' }}>{{ client.name }}</option>{% endfor %}</select>{{ ticketing_.hint('billed_to', wrong, 'A client among the partners: a company or a tour operator') }}</div>
+        <div class="field{{ wrong.asked_for is defined ? ' wrong' }}"><label for="ticket-asked">Asked for by</label><input class="input" id="ticket-asked" name="asked_for" value="{{ typed.asked_for }}" maxlength="160">{{ ticketing_.hint('asked_for', wrong, null) }}</div>
+    </div>
+
+    <span class="label">Held or issued</span>
+    <div class="grid-3">
+        <div class="field{{ wrong.status is defined ? ' wrong' }}"><label for="ticket-status">It is</label><select class="select" id="ticket-status" name="status"><option value="held"{{ typed.status == 'held' ? ' selected' }}>Held, until the carrier’s time limit</option><option value="issued"{{ typed.status == 'issued' ? ' selected' }}>Issued</option></select>{{ ticketing_.hint('status', wrong, null) }}</div>
+        <div class="field{{ wrong.held_until is defined ? ' wrong' }}"><label for="ticket-held">Held until</label><input class="input" id="ticket-held" name="held_until" type="datetime-local" value="{{ typed.held_until }}">{{ ticketing_.hint('held_until', wrong, 'Day and time; a held ticket is lost after it') }}</div>
+    </div>
+    <div class="field{{ wrong.notes is defined ? ' wrong' }}"><label for="ticket-notes">Notes</label><textarea class="textarea" id="ticket-notes" name="notes" rows="3">{{ typed.notes }}</textarea>{{ ticketing_.hint('notes', wrong, null) }}</div>
+
+    <footer class="panel-foot"><span class="state">Kept as recorded</span><button type="submit" class="button main">Record the ticket</button></footer>
+</form>
+{% endblock %}
