@@ -36,7 +36,7 @@
                 {%- set view = views[ticket.reference] -%}
                 <tr data-ticket="{{ ticket.reference }}">
                     <td><div><b style="white-space:nowrap">{{ ticket.reference }}</b><small>{{ view.names }}</small></div></td>
-                    <td><div>{{ view.trip }}<small>{{ view.carrier }} · {{ ticket.carrier.kind.label|lower }}</small></div></td>
+                    <td class="wrap"><div>{{ view.trip }}<small>{{ view.carrier }} · {{ ticket.carrier.kind.label|lower }}</small></div></td>
                     <td>{{ view.leaves }}</td>
                     <td>{{ billed[ticket.reference] }}</td>
                     <td data-status>{{ ticketing_.chip(view) }}</td>
