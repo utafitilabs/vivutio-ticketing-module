@@ -17,6 +17,7 @@ use Vivutio\Contracts\Access\ConcernSourceInterface;
 use Vivutio\Contracts\Partner\ChargeSourceInterface;
 use Vivutio\Contracts\Partner\PartnerDirectoryInterface;
 use Vivutio\Contracts\Settings\OrganizationIdentitySourceInterface;
+use Vivutio\Contracts\Shell\DashboardSourceInterface;
 use Vivutio\Contracts\Shell\MenuSourceInterface;
 use Vivutio\Ticketing\Access\TicketingConcerns;
 use Vivutio\Ticketing\Controller\CarrierController;
@@ -26,6 +27,7 @@ use Vivutio\Ticketing\Repository\CarrierRepository;
 use Vivutio\Ticketing\Repository\TicketRepository;
 use Vivutio\Ticketing\Service\CarrierService;
 use Vivutio\Ticketing\Service\TicketService;
+use Vivutio\Ticketing\Shell\TicketingDashboard;
 use Vivutio\Ticketing\Shell\TicketingMenu;
 
 /*
@@ -60,6 +62,10 @@ return static function (ContainerConfigurator $container): void {
             service(PartnerDirectoryInterface::class),
             service(OrganizationIdentitySourceInterface::SERVICE),
         ]);
+
+    $services->set('ticketing.dashboard', TicketingDashboard::class)
+        ->args([service(TicketRepository::class), service('ticketing.tickets'), service('clock')])
+        ->tag(DashboardSourceInterface::TAG);
 
     $services->set('ticketing.charges', TicketCharges::class)
         ->args([service(TicketRepository::class), service(PartnerDirectoryInterface::class)])

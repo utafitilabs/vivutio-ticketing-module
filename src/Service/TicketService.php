@@ -405,7 +405,8 @@ final readonly class TicketService
             ->record($at, $by, \sprintf('Issued, %s ticket number%s recorded', self::COUNTS[$n] ?? (string) $n, 1 === $n ? '' : 's'));
     }
 
-    private function zone(): \DateTimeZone
+    /** The organization's time zone, or the installation's until the organization names one. */
+    public function zone(): \DateTimeZone
     {
         $zone = $this->organization->identity()?->timeZone;
 

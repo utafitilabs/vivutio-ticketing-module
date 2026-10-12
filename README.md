@@ -50,8 +50,16 @@ partners: a company or a tour operator traded with now. The money shown is the
 fares, the agency's fee for each traveller, the taxes in the fares and what
 the carrier charged for changes.
 
+On the organization's **dashboard**, for whoever holds `tickets.read`, it
+puts three figures in the band (held, to issue; travelling this week; issued
+this month) and two cards: the held tickets the soonest let go first, and the
+issued ones with a leg leaving in the next seven days. Days and hours are the
+organization's time zone.
+
 The module names no other module; it reads partners through the core's
-`PartnerDirectoryInterface` and keeps only a partner's id.
+`PartnerDirectoryInterface` and keeps only a partner's id, says what tickets
+are owed through `ChargeSourceInterface`, and gives its dashboard through
+`DashboardSourceInterface`.
 
 ## Who may do what
 
